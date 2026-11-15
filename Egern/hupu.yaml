@@ -1,0 +1,92 @@
+name: 虎扑
+description: 过滤虎扑广告
+icon: https://raw.githubusercontent.com/sooyaaabo/IconLibrary/main/App/HUPU-01.png
+dns: {}
+rules:
+- domain_suffix:
+    match: goblin.hupu.com
+    policy: DIRECT
+rewrites:
+- match: (?i)^https?://goblin\.hupu\.com/\d+/[\d.]+/interfaceAd/getOther/
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{{"ad_code":-41,"show_type":0,"ads":[]}}'
+- match: (?i)^https://fairy\.mobileapi\.hupu\.com/gallery/getmod2
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{}'
+- match: (?i)^https://games\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/search/v2/hintkeylist
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{}'
+- match: (?i)^https://bbs\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/bbsallapi/users/browse/topics
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{}'
+- match: (?i)^https://bbs\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/bbsallapi/tag/v1/heatTag
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{}'
+- match: (?i)^https://bbs\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/bbsrankapi/bff/v1/rating/list
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{}'
+- match: (?i)^https://goblin\.hupu\.com/\d/\d\.\d\.\d+/interfaceAd/getOther
+  actions:
+  - response_body:
+      jq: .ad_code = -41 | .ads = [] | if has("interval") then .interval = 0 else . end
+- match: (?i)^https://games\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/bplapi/user/v1/more
+  actions:
+  - response_body:
+      jq: del(.result.inviteInfo, .result.vipInfo)
+- match: (?i)^https://games\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/buffer/hotList
+  actions:
+  - response_body:
+      jq: .result.topBanner = []
+- match: (?i)^https://bbs\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/topics/\d
+  actions:
+  - response_body:
+      jq: .data.topicResources = []
+- match: (?i)^https://bbs\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/bbsallapi/topics/topicSquareDetail
+  actions:
+  - response_body:
+      jq: .data.list |= map(select(.cate_id != -99))
+- match: (?i)^https://bbs\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/bbsallapi/lego/data
+  actions:
+  - response_body:
+      jq: .data.cards |= map(select(.code != "multiIcon"))
+- match: (?i)^https://games\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/bplbffapi/device/v1/nav/content
+  actions:
+  - response_body:
+      jq: .result.components |= map(select(.order != 5))
+- match: (?i)^https://bbs\.mobileapi\.hupu\.com/\d/\d\.\d\.\d+/bbsallapi/tab/cardModule
+  actions:
+  - response_body:
+      jq: .data = {}
+mitm:
+  hostnames:
+    includes:
+    - games.mobileapi.hupu.com
+    - fairy.mobileapi.hupu.com
+    - bbs.mobileapi.hupu.com
+    - goblin.hupu.com
+    - match-api.hupu.com
+    - '*.hupu.com'
