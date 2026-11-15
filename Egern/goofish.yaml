@@ -1,9 +1,6 @@
 
 name: 闲鱼
-description: 过滤闲鱼广告（GitHub 远程脚本版）
-open_url: https://apps.apple.com/app/id510909506
-author: RuCu6[https://github.com/RuCu6], ZenmoFeiShi[https://github.com/ZenmoFeiShi], ishowshu[https://github.com/ishowshu], 可莉🅥[https://github.com/luestr/ProxyResource/blob/main/README.md]
-homepage: https://loonlab.103516.xyz/Plugin/
+description: 过滤闲鱼广告
 icon: https://raw.githubusercontent.com/sooyaaabo/IconLibrary/main/App/Goofish.png
 
 dns: {}
