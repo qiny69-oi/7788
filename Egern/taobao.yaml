@@ -1,0 +1,67 @@
+name: 淘宝
+description: 过滤淘宝广告
+icon: https://raw.githubusercontent.com/sooyaaabo/IconLibrary/main/App/TaoBao.png
+dns: {}
+rules:
+- and:
+    match:
+    - url_regex:
+        match: ^http://.+/amdc/mobileDispatch
+    - user_agent:
+        match: '%E6%B7%98%E5%AE%9D*'
+    policy: REJECT
+- domain:
+    match: adashx.m.taobao.com
+    policy: REJECT
+- domain:
+    match: ossgw.alicdn.com
+    policy: REJECT
+- domain:
+    match: ems.youku.com
+    policy: REJECT
+- domain:
+    match: hudong.alicdn.com
+    policy: REJECT
+- domain:
+    match: h-adashx.ut.taobao.com
+    policy: REJECT
+- domain:
+    match: ut.taobao.com
+    policy: REJECT
+rewrites:
+- match: (?i)^https://heic\.alicdn\.com/imgextra/i\d/[A-Za-z0-9_!]+-\d+-tps-\d+-\d+\.png_\d+x\d*q\d+\.jpg_\.heic$
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{}'
+- match: (?i)^https://heic\.alicdn\.com/imgextra/i\d/[A-Za-z0-9_!]+-\d+-tps-\d+-\d+\.jpg_\d+x\d*q\d+\.jpg_\.heic$
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{}'
+- match: (?i)^https://heic\.alicdn\.com/imgextra/i\d/\d*/?[\w!]+-\d-(?:octopus|tps)-(?:1080|1125)-\d{4}\.(?:jpg|png)_(?:1\d{3}|9\d{2})x(?:\d|1\d{3}|9\d{2})q[59]0
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{}'
+- match: (?i)^https?://gw\.alicdn\.com/imgextra/i\d+/[^/]+_!!\d+-\d+-tps-(720-1280|1080-1920|1125-1602|1242-2208)\.(jpg|png|jpeg)_[^/]+\.webp
+  actions:
+  - respond:
+      status: 200
+      headers:
+        Content-Type: application/json
+      body: '{}'
+mitm:
+  hostnames:
+    includes:
+    - acs.m.taobao.com
+    - heic.alicdn.com
+    - gw.alicdn.com
+    - guide-acs.m.taobao.com
+    - poplayer.template.alibaba.com
