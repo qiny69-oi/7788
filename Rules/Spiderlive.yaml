@@ -2,7 +2,7 @@
 domain_suffix_set:
   - k8v4dh4.app
   - w677i02vb1.app
-  - - wa3tvre.net
+  - wa3tvre.net
 domain_regex_set:
   - "^zzzb[0-9]+vip\\.app$"
   # 如果“zzzz”是泛指任意字母，可以用：
