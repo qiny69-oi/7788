@@ -215,7 +215,7 @@ scriptings:
   - http_response:
       name: 闲鱼本地去广告
       match: '^https://(?:acs|g-acs)\.m\.goofish\.com/gw/(?:mtop\.taobao\.idlehome\.home\.nextfresh|mtop\.taobao\.idle\.local\.home|mtop\.idle\.user\.page\.my\.adapter|mtop\.taobao\.idlehome\.home\.circle\.list|mtop\.taobao\.idle\.local\.nearby\.itemdetail\.enter|mtop\.taobao\.idlemtopsearch\.search|mtop\.taobao\.idle\.local\.flow\.plat\.section)(?:/|$)'
-      script_url: 'https://raw.githubusercontent.com/你的用户名/Goofish/main/goofish.js'
+      script_url: 'https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/goofish.js'
       update_interval: 86400
       max_size: 2097152
       timeout: 30
