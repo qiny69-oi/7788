@@ -37,17 +37,6 @@ rewrites:
   actions:
   - response_body:
       jq: if .data.cards then .data.cards[].items |= map(select(.type != "personal_vip")) | .data.cards |= map(select((.items | length) > 0)) end
-- match: ^https?://weibointl\.api\.weibo\.cn/portal\.php\?ct=feed&a=search_topic&
-  actions:
-  - response_body:
-      filter: |
-        if .items then
-          .items |= map(
-            select(
-              ( (.mblogtypename | IN("广告", "廣告", "热推", "熱推")) or (.promotion.type == "ad") ) | not
-            )
-          )
-        end
   hostnames:
     includes:
     - api.weibo.cn
