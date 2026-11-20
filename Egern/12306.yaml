@@ -1,6 +1,6 @@
 name: '12306'
 description: 过滤 12306 广告
-icon: https://raw.githubusercontent.com/sooyaaabo/IconLibrary/main/App/Railway12306.png
+icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/12306.png
 dns: {}
 scriptings:
 - http_request:
