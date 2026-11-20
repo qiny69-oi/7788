@@ -1,6 +1,6 @@
 name: 酷安
 description: 过滤酷安 App 广告
-icon: https://raw.githubusercontent.com/sooyaaabo/IconLibrary/main/App/CoolApk.png
+icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/coolapk.png
 dns: {}
 rules:
 - domain_suffix:
