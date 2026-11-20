@@ -1,6 +1,6 @@
 name: 京东
 description: 去除京东开屏广告
-icon: https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/JD.png
+icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/jd.png
 dns: {}
 rewrites:
 - match: ^https?://[^/]+\.360buyimg\.com/mobilecms/s1\d{3}x2\d{3}_jfs/
