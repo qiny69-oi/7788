@@ -1,6 +1,6 @@
 name: 微博轻享版
 description: 移除开屏、瀑布流、趋势页、用户中心广告
-icon: https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/Weibo_intl.png
+icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/weibo.png
 dns: {}
 rewrites:
 - match: ^https?:\/\/weibointl\.api\.weibo\.cn\/portal\.php\?(a=get_searching_info&|ct=feed&a=search_topic&)
