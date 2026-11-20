@@ -1,6 +1,6 @@
 name: 淘宝
 description: 过滤淘宝广告
-icon: https://raw.githubusercontent.com/sooyaaabo/IconLibrary/main/App/TaoBao.png
+icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/taobao.png
 dns: {}
 rules:
 - and:
