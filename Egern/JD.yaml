@@ -1,0 +1,70 @@
+name: 京东
+description: 过滤京东 App 广告
+icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/jd.png
+# merged from: Thelongdarkorg/loon-plugins@2026-09-19 jd_splash_ad_block.plugin → 全部条目
+# conflicts resolved: 无冲突；原插件 MITM 未列 (bdsp-x|dsp-x).jd.com，已补入，否则 https 的 ADX reject 不生效
+
+rules:
+  # 京东诊断域名，直接拒绝
+  - url_regex:
+      match: '^http://\w{32}\.jddebug\.com/diagnose\?'
+      policy: REJECT
+
+url_rewrites:
+  # 物料广告接口（开屏/信息流物料下发）
+  - match: '^https?://api\.m\.jd\.com/client\.action\?functionId=queryMaterialAdverts'
+    location: http://reject-dict/
+  # 京东广告交换平台 (ADX) 实时竞价开屏
+  - match: '^https?://(bdsp-x|dsp-x)\.jd\.com/adx/'
+    location: http://reject/
+  # 开屏大图：精确到 iPhone Air 开屏专用尺寸 s1260x2736_jfs（1260×2736），严禁通配 .*jfs（会误杀商品图）
+  - match: '^https?://m\.360buyimg\.com/mobilecms/s1260x2736_jfs'
+    location: http://reject-200/
+  # 登录页推广位
+  - match: '^https?://api\.m\.jd\.com/\?loginType=11'
+    location: http://reject-dict/
+  # 首页小组件广告
+  - match: '^https?://api\.m\.jd\.com/client\.action\?functionId=getWidgetV1052'
+    location: http://reject/
+  # 各类推荐/推广接口：返回空
+  - match: '^https://api\.m\.jd\.com/client\.action\?functionId=(?:cartCouponRecommendGoods|intelligentRecommendSku|obtainGrowingInfo|recommendShop|searchBoxWord|stationPullService|uniformRecommend)'
+    location: http://reject-dict/
+
+body_rewrites:
+  # 京东极速版广告位：替换关键字段名，使 App 解析不到广告
+  - response_regex:
+      match: '^https?://api\.m\.jd\.com/client\.action\?functionId=lite_advertising'
+      find: 'jdLiteAdvertisingVO'
+      replace: 'sooyaaabo'
+  # 基础配置：关闭 socket 监控/上报与 httpdns（原 response-body-json-replace 转 jq，仅当对象存在时改）
+  - response_jq:
+      match: '^https://api\.m\.jd\.com/client\.action\?functionId=basicConfig'
+      filter: >-
+        . as $o | try ((if (.data.JDMessage.socketmonitor|type)=="object" then .data.JDMessage.socketmonitor.isSocketEstablishedAhead=0 | .data.JDMessage.socketmonitor.isSocketReport=0 else . end) | (if (.data.JDHttpToolKit.httpdns|type)=="object" then .data.JDHttpToolKit.httpdns.httpdns=0 else . end)) catch $o
+  # 购物车页：删除底部空车楼层与推荐楼层（原 response-body-json-del 转 jq）
+  - response_jq:
+      match: '^https://api\.m\.jd\.com/client\.action\?functionId=cart'
+      filter: >-
+        . as $o | try (del(.cartLocationMap.loc_emptyCartFloor2, .emptyCartRecommendFloor)) catch $o
+  # start：清空开屏大图列表 + 展示次数归零
+  - response_jq:
+      match: '^https?://api\.m\.jd\.com/client\.action\?functionId=start'
+      filter: >-
+        . as $o | try ((if (.images|type)=="array" then .images=[] else . end) | (if (.showTimesDaily|type)=="number" then .showTimesDaily=0 else . end)) catch $o
+  # welcomeHome：删首屏浮层楼层 + 网页浮层列表
+  - response_jq:
+      match: '^https?://api\.m\.jd\.com/client\.action\?functionId=welcomeHome'
+      filter: >-
+        . as $o | try ((if (.floorList|type)=="array" then .floorList |= map(select(.type as $t | $t == null or (["bottomXview","float","photoCeiling","ruleFloat","searchIcon","topRotate","tabBarAtmosphere"] | index($t) | not))) else . end) | (if (.webViewFloorList|type)=="array" then .webViewFloorList=[] else . end)) catch $o
+  # deliverLayer：删物流页顶部 banner
+  - response_jq:
+      match: '^https?://api\.m\.jd\.com/client\.action\?functionId=deliverLayer'
+      filter: >-
+        . as $o | try ((del(.bannerInfo)) | (if (.floors|type)=="array" then .floors |= map(select(.mId as $m | $m == null or (["banner","jdDeliveryBanner"] | index($m) | not))) else . end)) catch $o
+
+mitm:
+  hostnames:
+    - api.m.jd.com
+    - m.360buyimg.com
+    - bdsp-x.jd.com
+    - dsp-x.jd.com
