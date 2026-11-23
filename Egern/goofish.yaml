@@ -46,7 +46,13 @@ rewrites:
     actions:
       - response_body:
           jq: .data.sections|=map(select(.cardType==2001))
-
+          
+  #去掉关注页面的未关注推荐
+  - match: (?i)^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.fun\.follow\.recommend\.feed\.list/
+    actions:
+      - response_body:
+          jq: .data.nextPage = "false" | .data.sections |= map(select(.cardData.userInfo.attention == "true"))
+          
   - match: (?i)^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.home\.community/
     actions:
       - response_body:
