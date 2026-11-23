@@ -158,7 +158,7 @@ rewrites:
 - match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.home\.circle\.list/
   actions:
   - response_body:
-      jq: .data.circleList = (.data.circleList | map(select(.circleId == "1" or .circleId == "2"))) | .data.headList = (.data.headList | map(select(.bizCode == "main" or .bizCode == "recycle"))) | .data.next.headList = (.data.next.headList | map(select(.bizCode == "main" or .bizCode == "recycle")))
+      jq: .data.circleList = (.data.circleList | map(select(.circleId == "1" or .circleId == "2"))) | .data.headList = (.data.headList | map(select(.bizCode == "main" or .bizCode == "recycle"))) | .data.next.headList = (.data.next.headList | map(select(.bizCode == "main" or .bizCode == "recycle"))) | .data.headList = (.data.headList | map(if .bizCode == "recycle" then .showInfo.rightTagImage = {} else . end)) | .data.next.headList = (.data.next.headList | map(if .bizCode == "recycle" then .showInfo.rightTagImage = {} else . end))
 - match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.local\.nearby\.itemdetail\.enter/
   actions:
   - response_body:
