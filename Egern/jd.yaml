@@ -1,38 +1,28 @@
 name: 京东
-description: 去除京东开屏广告
+description: 过滤京东 App 开屏广告
 icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/jd.png
 dns: {}
 rewrites:
-- match: ^https?://[^/]+\.360buyimg\.com/mobilecms/s1\d{3}x2\d{3}_jfs/
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: image/gif
-      body:
-        base64: R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==
-- match: ^https?://[^/]*360buyimg\.com/material-video/
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: video/mp4
-- match: ^https?://api\.m\.jd\.com/client\.action\?(?:[^#]*&)?functionId=queryPagePopWindow(?:&[^#]*)?$
+- match: ^https?://api\.m\.jd\.com/client\.action\?functionId=queryMaterialAdverts
   actions:
   - respond:
       status: 200
       headers:
         Content-Type: application/json
       body: '{}'
-- match: ^https?://api\.m\.jd\.com/client\.action\?(?:[^#]*&)?functionId=start(?:&[^#]*)?$
+- match: ^https?://(bdsp-x|dsp-x)\.jd\.com/adx/
+  actions:
+  - respond:
+      status: 404
+- match: ^https?://m\.360buyimg\.com/mobilecms/s1260x2736_jfs
+  actions:
+  - respond:
+      status: 200
+- match: ^https?://api\.m\.jd\.com/client\.action\?functionId=start
   actions:
   - response_body:
-      jq: if (.images) then .images = [] else . end | .showTimesDaily = 0 | .countdown = 0 | .showTimes = 0
-- match: ^https?://api\.m\.jd\.com/client\.action\?(?:[^#]*&)?functionId=welcomeHome(?:&[^#]*)?$
-  actions:
-  - response_body:
-      jq: if (.images) then .images = [] else . end | .showTimesDaily = 0 | .countdown = 0
+      jq: .images = [] | .showTimesDaily = 0
 mitm:
   hostnames:
   - api.m.jd.com
-  - '*.360buyimg.com'
+  - m.360buyimg.com
