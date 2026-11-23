@@ -1,28 +1,27 @@
 name: 京东
 description: 过滤京东 App 开屏广告
 icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/jd.png
-dns: {}
-rewrites:
-- match: ^https?://api\.m\.jd\.com/client\.action\?functionId=queryMaterialAdverts
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https?://(bdsp-x|dsp-x)\.jd\.com/adx/
-  actions:
-  - respond:
-      status: 404
-- match: ^https?://m\.360buyimg\.com/mobilecms/s1260x2736_jfs
-  actions:
-  - respond:
-      status: 200
-- match: ^https?://api\.m\.jd\.com/client\.action\?functionId=start
-  actions:
-  - response_body:
-      jq: .images = [] | .showTimesDaily = 0
+
+url_rewrites:
+  # 首页弹窗接口：返回空 JSON
+  - match: '^https?://api\.m\.jd\.com/client\.action\?(?:[^#]*&)?functionId=queryPagePopWindow(?:&[^#]*)?$'
+    location: 'http://reject-dict/'
+
+  # 开屏图片素材
+  - match: '^https?://[^/]+\.360buyimg\.com/mobilecms/s1\d{3}x2\d{3}_jfs/'
+    location: 'http://reject-img/'
+
+  # 开屏视频素材
+  - match: '^https?://[^/]*360buyimg\.com/material-video/'
+    location: 'http://reject-video/'
+
+body_rewrites:
+  # 开屏主接口：不 reject，清理素材与频控字段后原样返回
+  - response_jq:
+      match: '^https?://api\.m\.jd\.com/client\.action\?(?:[^#]*&)?functionId=start(?:&[^#]*)?$'
+      filter: '.images = [] | .showTimesDaily = 0 | .showtimes = 0 | .showTimes = 0 | .start_isshow = 0 | .startIsshow = 0 | .showcondition = 0 | .verCtrSwitch = 0 | .verCtrAllSwitch = 0 | .saoasaoSwitch = 0 | .ver14CloseSwitch = 1 | .launchVideos = [] | .LaunchVideos = [] | del(.startADImage)'
+
 mitm:
   hostnames:
-  - api.m.jd.com
-  - m.360buyimg.com
+    - api.m.jd.com
+    - '*.360buyimg.com'
