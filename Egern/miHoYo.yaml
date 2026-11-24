@@ -1,6 +1,6 @@
 name: 米游社
 description: 移除开屏广告、搜索栏热搜及资讯、青少年模式弹窗。
-icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/miyoushe.png
+icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/miHoYo.png
 dns: {}
 rewrites:
 - match: (?i)^https://bbs-api(-ab)?\.miyoushe\.com/apihub/api/getAppSplash$
