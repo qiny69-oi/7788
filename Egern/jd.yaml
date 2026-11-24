@@ -1,6 +1,6 @@
 name: 京东
 description: 过滤京东 App 开屏广告
-icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/jd.png
+icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/JD.png
 dns: {}
 url_rewrites:
   # 首页弹窗接口：返回空 JSON
