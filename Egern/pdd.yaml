@@ -1,6 +1,6 @@
 name: 拼多多
 description: 移除开屏广告、底栏多多视频、会场入口、聊天页面精选推荐及推广，精简首页和个人中心。
-icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/pdd.png
+icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/PDD.png
 dns: {}
 rules:
 - and:
