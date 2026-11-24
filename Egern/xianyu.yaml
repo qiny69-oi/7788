@@ -55,6 +55,9 @@ body_rewrites:
       match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.playboy\.recommend/2\.0'
       filter: '.data.recommends = [] | .data.items = [] | .data.next = false'
   - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.playboy\.recommend/3\.0'
+      filter: '.data.recommends = [] | .data.items = [] | .data.next = false'
+  - response_jq:
       match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.fun\.follow\.often\.visit'
       filter: '.data.sections = []'
   - response_jq:
