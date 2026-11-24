@@ -2,176 +2,108 @@ name: 闲鱼
 description: 去除首页、个人页、搜索页、搜索结果页、关注页、消息页及商品详情页的推广和广告。
 icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/goofish.png
 dns: {}
+
 rules:
-- user_agent:
-    match: '%E9%97%B2%E9%B1%BC*'
-    policy: REJECT
-- and:
-    match:
-    - url_regex:
-        match: ^http://amdc\.m\.taobao\.com/amdc/mobileDispatch
-    - user_agent:
-        match: '%E9%97%B2%E9%B1%BC*'
-    policy: REJECT
-rewrites:
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.item\.search\.activate/2\.0
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.search\.discover/1\.0
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.item\.resell\.recommendorhotcate/1\.0
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.idle\.coin\.nextfresh/1\.0
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.playboy\.recommend/1\.0
-  actions:
-  - respond:
-      status: 404
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlecommerce\.splash\.ads
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.item\.search\.activate
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.local\.home\.top
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.idle\.trade\.item\.recommend\.render
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.detailpage\.search\.shade/
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.item\.recommend\.tab
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemessage\.user\.query\.top\.resource
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.search\.shade/
-  actions:
-  - response_body:
-      jq: del(.data)
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.user\.strategy\.list/
-  actions:
-  - response_body:
-      jq: del(.data)
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.group\.myself\.banner/
-  actions:
-  - response_body:
-      jq: .data.bannerList = []
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.playboy\.recommend/2\.0
-  actions:
-  - response_body:
-      jq: .data.recommends = [] | .data.items = [] | .data.next = false
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.fun\.follow\.often\.visit
-  actions:
-  - response_body:
-      jq: .data.sections = []
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.fun\.follow\.recommend\.feed\.list
-  actions:
-  - response_body:
-      jq: .data.nextPage = "false" | .data.sections = (.data.sections | map(select(.cardData.userInfo.attention == "true")))
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.circle\.myself\.banner/1\.0
-  actions:
-  - response_body:
-      jq: .data.bannerList = []
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.circle\.visited/1\.0
-  actions:
-  - response_body:
-      jq: .data.visitedCircleList = []
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.search\.activate\.tablist
-  actions:
-  - response_body:
-      jq: .data.tabList = []
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.widget\.refresh\.get
-  actions:
-  - response_body:
-      jq: .data.homeTopList = []
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.trade\.full\.info
-  actions:
-  - response_body:
-      jq: .data.components = (.data.components | map(select(.render != "bannerVO")))
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.trade\.order\.render/
-  actions:
-  - response_body:
-      jq: del(.data.bottomBarVO.benefitPointAtmosphere) | .data.components = (.data.components | map(select(.render != "meanTimeBuyVO")))
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.home\.nextfresh/
-  actions:
-  - response_body:
-      jq: del(.data.widgetReturnDO) | del(.data.bannerReturnDO) | .data.homeTopList = [] | .data.sections = (.data.sections | map(select(.data.bizType != "AD")) | map(select(.data.bizType != "homepage")) | map(select(.template.name != "fish_home_yunying_card_d3")) | map(select(.template.name != "idlefish_seafood_market")) | map(select(.template.name != "fish_home_chat_room")) | map(select(.data.cardTypeValue == "Item")))
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.local\.home/
-  actions:
-  - response_body:
-      jq: .data.sections = (.data.sections | map(select(.data.bizType != "AD")))
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.idle\.user\.page\.my\.adapter/
-  actions:
-  - response_body:
-      jq: .data.container.sections = (.data.container.sections | map(select(.index == "0" or .index == "1" or .index == "3"))) | del(.data.container.sections[0].item.level) | .data.ability = []
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.home\.circle\.list/
-  actions:
-  - response_body:
-      jq: .data.circleList = (.data.circleList | map(select(.circleId == "1" or .circleId == "2"))) | .data.headList = (.data.headList | map(select(.bizCode == "main" or .bizCode == "recycle"))) | .data.next.headList = (.data.next.headList | map(select(.bizCode == "main" or .bizCode == "recycle"))) | .data.headList = (.data.headList | map(if .bizCode == "recycle" then .showInfo.rightTagImage = {} else . end)) | .data.next.headList = (.data.next.headList | map(if .bizCode == "recycle" then .showInfo.rightTagImage = {} else . end))
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.local\.nearby\.itemdetail\.enter/
-  actions:
-  - response_body:
-      jq: .data.targetUrl = "" | .data.trackParams.itemIds = "" | .data.name = "" | .data.desc = "" | .data.poiName = "" | .data.nearbyItemInfoList = []
-- match: ^https://g-acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.search/
-  actions:
-  - response_body:
-      jq: del(.data.resultPrefixBar) | .data.topList = [] | .data.resultList = (.data.resultList | map(select(.data.item.main.exContent.isAliMaMaAD != true)) | map(select(.data.item.main.exContent.isAliMaMaAD != "true")) | map(select(.data.template.name != "idlefish_search_card_category_select")) | map(select(.data.template.name != "idlefish_search_spu_market_publish")))
-- match: ^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.local\.flow\.plat\.section
-  actions:
-  - response_body:
-      jq: .data.data.components = (.data.data.components | map(select(.key != "fish_home_activity_enter_cardV1")))
+  - user_agent:
+      match: '%E9%97%B2%E9%B1%BC*'
+      policy: REJECT
+  - and:
+      match:
+        - url_regex:
+            match: '^http://amdc\.m\.taobao\.com/amdc/mobileDispatch'
+        - user_agent:
+            match: '%E9%97%B2%E9%B1%BC*'
+      policy: REJECT
+
+url_rewrites:
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.item\.search\.activate/2\.0'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.search\.discover/1\.0'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.item\.resell\.recommendorhotcate/1\.0'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.idle\.coin\.nextfresh/1\.0'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.playboy\.recommend/1\.0'
+    location: http://reject/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlecommerce\.splash\.ads'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.item\.search\.activate'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.local\.home\.top'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.idle\.trade\.item\.recommend\.render'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.detailpage\.search\.shade/'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.item\.recommend\.tab'
+    location: http://reject-dict/
+  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemessage\.user\.query\.top\.resource'
+    location: http://reject-dict/
+
+body_rewrites:
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.search\.shade/'
+      filter: 'del(.data)'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.user\.strategy\.list/'
+      filter: 'del(.data)'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.group\.myself\.banner/'
+      filter: '.data.bannerList = []'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.playboy\.recommend/2\.0'
+      filter: '.data.recommends = [] | .data.items = [] | .data.next = false'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.fun\.follow\.often\.visit'
+      filter: '.data.sections = []'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.fun\.follow\.recommend\.feed\.list'
+      filter: '.data.nextPage = "false" | .data.sections = (.data.sections | map(select(.cardData.userInfo.attention == "true")))'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.circle\.myself\.banner/1\.0'
+      filter: '.data.bannerList = []'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.circle\.visited/1\.0'
+      filter: '.data.visitedCircleList = []'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.search\.activate\.tablist'
+      filter: '.data.tabList = []'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.widget\.refresh\.get'
+      filter: '.data.homeTopList = []'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.trade\.full\.info'
+      filter: '.data.components = (.data.components | map(select(.render != "bannerVO")))'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.trade\.order\.render/'
+      filter: 'del(.data.bottomBarVO.benefitPointAtmosphere) | .data.components = (.data.components | map(select(.render != "meanTimeBuyVO")))'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.item\.buy\.feeds/'
+      filter: '.data.sections = [] | .data.feedsCount = 0 | .data.nextPage = false'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.home\.nextfresh/'
+      filter: 'del(.data.widgetReturnDO) | del(.data.bannerReturnDO) | .data.homeTopList = [] | .data.sections = (.data.sections | map(select(.data.bizType != "AD")) | map(select(.data.bizType != "homepage")) | map(select(.template.name != "fish_home_yunying_card_d3")) | map(select(.template.name != "idlefish_seafood_market")) | map(select(.template.name != "fish_home_chat_room")) | map(select(.data.cardTypeValue == "Item")))'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.local\.home/'
+      filter: '.data.sections = (.data.sections | map(select(.data.bizType != "AD")))'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.idle\.user\.page\.my\.adapter/'
+      filter: '.data.container.sections = (.data.container.sections | map(select(.index == "0" or .index == "1" or .index == "3"))) | del(.data.container.sections[0].item.level) | .data.ability = []'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlehome\.home\.circle\.list/'
+      filter: '.data.circleList = (.data.circleList | map(select(.circleId == "1" or .circleId == "2"))) | .data.headList = (.data.headList | map(select(.bizCode == "main" or .bizCode == "recycle"))) | .data.next.headList = (.data.next.headList | map(select(.bizCode == "main" or .bizCode == "recycle"))) | .data.headList = (.data.headList | map(if .bizCode == "recycle" then .showInfo.rightTagImage = {} else . end)) | .data.next.headList = (.data.next.headList | map(if .bizCode == "recycle" then .showInfo.rightTagImage = {} else . end))'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.local\.nearby\.itemdetail\.enter/'
+      filter: '.data.targetUrl = "" | .data.trackParams.itemIds = "" | .data.name = "" | .data.desc = "" | .data.poiName = "" | .data.nearbyItemInfoList = []'
+  - response_jq:
+      match: '^https://g-acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.search/'
+      filter: 'del(.data.resultPrefixBar) | .data.topList = [] | .data.resultList = (.data.resultList | map(select(.data.item.main.exContent.isAliMaMaAD != true)) | map(select(.data.item.main.exContent.isAliMaMaAD != "true")) | map(select(.data.template.name != "idlefish_search_card_category_select")) | map(select(.data.template.name != "idlefish_search_spu_market_publish")))'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.local\.flow\.plat\.section'
+      filter: '.data.data.components = (.data.data.components | map(select(.key != "fish_home_activity_enter_cardV1")))'
+
 mitm:
   hostnames:
-  - acs.m.goofish.com
-  - g-acs.m.goofish.com
+    - acs.m.goofish.com
+    - g-acs.m.goofish.com
