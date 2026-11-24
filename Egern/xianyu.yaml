@@ -28,8 +28,7 @@ url_rewrites:
     location: http://reject/
   - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.playboy\.recommend/3\.0'
     location: http://reject/
-  - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.fun\.follow\.recommend\.feed\.list'
-    location: http://reject/
+
   - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlecommerce\.splash\.ads'
     location: http://reject-dict/
   - match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idlemtopsearch\.item\.search\.activate'
@@ -61,6 +60,9 @@ body_rewrites:
   - response_jq:
       match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.fun\.follow\.often\.visit'
       filter: '.data.sections = []'
+  - response_jq:
+      match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.fun\.follow\.recommend\.feed\.list'
+      filter: '.data.nextPage = "false" | .data.sections = (.data.sections | map(select(.cardData.userInfo.attention == "true")))'
   - response_jq:
       match: '^https://acs\.m\.goofish\.com/gw/mtop\.taobao\.idle\.circle\.myself\.banner/1\.0'
       filter: '.data.bannerList = []'
