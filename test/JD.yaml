@@ -97,13 +97,13 @@ scriptings:
   - http_request:
       name: 京东_广告请求拦截
       match: '(?i)^https?://((api|api-q|squnit-api|quic-api)\.m\.jd\.com|(squnit-api-)?api-ai\.jd\.com)/(client\.action|api)?([/?#]|$)'
-      script_url: 'https://raw.githubusercontent.com/y0unge/ad-block-collection/main/jd_ad_request.js'
+      script_url: 'https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/test/jd_ad_request.js'
       body_required: true
       timeout: 20
   - http_response:
       name: 京东_广告响应清理
       match: '(?i)^https?://((api|api-q|squnit-api|quic-api)\.m\.jd\.com|(squnit-api-)?api-ai\.jd\.com)/(client\.action|api)?([/?#]|$)'
-      script_url: 'https://raw.githubusercontent.com/y0unge/ad-block-collection/main/JD_remove_ads.js'
+      script_url: 'https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/test/JD_remove_ads.js'
       body_required: true
       timeout: 20
 
