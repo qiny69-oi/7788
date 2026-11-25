@@ -38,9 +38,10 @@ rules:
 
 url_rewrites:
   # ---------- 广告 / 开屏接口（返回空字典，App 自动跳过广告位） ----------
-  # 阿里广告服务：开屏与信息流广告下发
+  # 淘宝开屏资源加载（2026-11-25 据 Kris 抓包追加，上游没有这条）
   - match: '^https://acs\.m\.taobao\.com/gw/mtop\.taobao\.shot\.resources\.load/'
     location: http://reject-dict/
+  # 阿里广告服务：开屏与信息流广告下发
   - match: '^https://acs\.m\.taobao\.com/gw/mtop\.alibaba\.advertisementservice\.getadv'
     location: http://reject-dict/
   # 一淘广告配置
@@ -81,9 +82,33 @@ url_rewrites:
   - match: '^https?://gw\.alicdn\.com/imgextra/i\d+/[^/]+_!!\d+-\d+-tps-(720-1280|1080-1920|1125-1602|1242-2208)\.(jpg|png|jpeg)_[^/]+\.webp'
     location: http://reject-dict/
 
+# 2026-11-25 追加（非上游 FFDNS，来自 fmz200/wool_scripts 2026-11-11 的 myBlockAds.js）：
+#   开屏仍在出、shot 已拦死之后查到的第二条供货口——fmz200 把它单列为「淘宝-开屏活动」：
+#   poplayer.template.alibaba.com/<name>.json，下发模板里的 res.images / res.videos / mainRes.images
+#   正好是动图/视频素材 + enable 开关；同文件还单列「淘宝-开屏视频广告」
+#   mtop.taobao.cloudvideo.video.query（guide-acs，已在 MITM），清 resources/caches、duration 置 0。
+#   两条在 FFDNS 插件里都没有，本模块之前也没覆盖。处理方式不用 reject-dict（京东教训：
+#   空字典会让 App 回退本地缓存配置），而是按 myBlockAds.js 原逻辑用 basic jq 清字段、原样返回。
+
+body_rewrites:
+  # 开屏活动模板：清空图片/视频素材、关掉 enable（fmz200 myBlockAds.js「淘宝-开屏活动」原逻辑转 basic jq）
+  - response_jq:
+      match: '^https://poplayer\.template\.alibaba\.com/\w+\.json'
+      filter: '.res.images = [] | .res.videos = [] | .enable = false | .mainRes.images = []'
+  # 开屏视频广告：时长置 0、清空视频资源与缓存（fmz200 myBlockAds.js「淘宝-开屏视频广告」原逻辑转 basic jq）
+  - response_jq:
+      match: '^https://guide-acs\.m\.taobao\.com/gw/mtop\.taobao\.cloudvideo\.video\.query'
+      filter: '.data.duration = "0" | .data.resources = [] | .data.caches = []'
+
 mitm:
   hostnames:
     - acs.m.taobao.com
     - guide-acs.m.taobao.com
     - heic.alicdn.com
     - gw.alicdn.com
+    - poplayer.template.alibaba.com
+    # 2026-11-25 诊断结案：13:34 窗口的两个嫌疑都已排除，MITM 名单恢复为原始 4 个主机。
+    # yixiu-abtest.alicdn.com（↓145 KB）：Kris 打开其响应确认是全 App 的 AB 实验配置（rootDomains / experiments /
+    # ratioRanges，可见实验是 usePcdn、dwinstance_newplay 等视频播放技术项，launchLayers 为空、无广告素材），不能拦。
+    # dorangesource.alicdn.com（↓7 KB）：在 Egern 里只是 TCP/VIF 隧道记录，没有 HTTP 层、无 URL 无 body 可看，
+    # 7 KB 也装不下开屏素材，最多是 Orange 小配置，无法实锤且不值得为它长期开 MITM，已移除。
