@@ -1,0 +1,504 @@
+// 京东去广告 / 去推荐（Egern 原生 ctx 版）
+// 原作者: aoconch (https://github.com/aoconch/jd-loon-remove-recommend)
+// 来源: y0unge/ad-block-collection 的 JD_remove_ads.js，清理逻辑完全一致，
+// 仅把 Loon/Surge 的 $request/$response/$done/$notification 接口换成 Egern 的
+// export default + ctx 接口：响应体经 ctx.response.text() 读取，未改动时原样回填，
+// 改动后以 { body } 返回；通知改用 ctx.notify。
+// functionId 常在 POST body；对所有 client.action/api 响应做清理
+//
+// 开屏 fid 无关兜底（2026-10-30）:
+//   抓包发现京东新网络栈的加密 body 通道（uuid=...&body=<加密>&appid=mpaas2，URL 为
+//   光秃 /client.action? 或根路径 /）中 functionId 为明文兄弟参数，但部分请求 body
+//   整体加密时 pickFunctionId 可能拿不到 fid，start 分支不触发；另存在根路径
+//   api.m.jd.com/ 直传 body fid 的通道。因此开屏字段清理不依赖 fid：只要响应中
+//   出现 showTimesDaily/startADImage/start_isshow 等特征字段（无论嵌套在哪一层），
+//   scrubSplashFields 即按与 start 分支相同语义清理（含 images/launchVideos 清空）。
+//
+// 开屏架构实锤（2026-11-02 IPA 二次挖掘 + 漏网 HAR 172 分析）:
+//   京东开屏不走"启动时请求-展示"——配置由后台会话预拉取后写入 JDMPLaunchCacheDataIO
+//   本地缓存（长生命周期），前台启动纯本地决策展示（launchAdShowTimes 本地日计数，
+//   "每日首启一次"由此而来）；素材经 Image_JDAppHome sche 预取（referer
+//   download_Image_JDAppHome，s1125x2436 全屏图）。模型字段除经典 showTimesDaily/
+//   images/startADImage 外还有天幕(TN)体系: TNStart/tnNode/tnUrl/tnId/tnMd5 与
+//   startCardImage/toShow/isNewCarousel——均已纳入清理清单。存量本地缓存需清一次
+//   （京东内清理缓存或卸载重装），此后新写入的配置均被本脚本清空。
+
+export default async function (ctx) {
+  const DEBUG = false; // true: 输出全部 functionId 流水用于排查（平时保持 false 省电）
+
+  const url = ctx.request.url || "";
+  let reqBody = "";
+  try {
+    reqBody = await ctx.request.text();
+  } catch (e) {}
+  if (!ctx.response) return;
+
+  let rawStr = "";
+  try {
+    rawStr = await ctx.response.text();
+  } catch (e) {}
+  if (!rawStr) return;
+
+  // 响应体已被读取消费，未改动时用此函数原样回填
+  const pass = () => ({ body: rawStr });
+
+  function logHit(msg) {
+    console.warn("[JD-FID] " + msg + " fid=" + (fid || "(none)"));
+  }
+
+  function pickFunctionId() {
+    let m = url.match(/[?&]functionId=([^&]+)/i);
+    if (m) return decodeURIComponent(m[1]);
+    m = reqBody.match(/(?:^|&)functionId=([^&]+)/i);
+    if (m) return decodeURIComponent(m[1]);
+    try {
+      const j = JSON.parse(reqBody);
+      if (j && j.functionId) return String(j.functionId);
+    } catch (e) {}
+    // body 里嵌套的 functionId=xxx
+    m = reqBody.match(/functionId%3D([^%&]+)/i) || reqBody.match(/"functionId"\s*:\s*"([^"]+)"/i);
+    if (m) return decodeURIComponent(m[1]);
+    return "";
+  }
+
+  const fid = pickFunctionId();
+
+  if (DEBUG) {
+    console.warn("[JD-FID] " + (ctx.request.method || "GET") + " fid=" + (fid || "(none)") + " url=" + url.slice(0, 100));
+  }
+
+  // 功能性接口白名单(2026-11-09/10 领券问题): 以下 fid 纯 UI/功能通道, 无广告拦截价值,
+  // 其响应含 banner 楼层/"猜你喜欢"等特征时会被 deepScrub 的 BLOCK_MID/TITLE_RE
+  // 误清空(券卡片即 bannerFloor 楼层)——直接放行不做任何清理:
+  //   1) readCustomSurfaceList: 自定义浮层/皮肤系统(首页皮肤/导航样式/浮层)
+  //   2) mcoupon_showcoupon / mcoupon_getcoupon (mcoupon_* 前缀): 领券 H5
+  //      (coupon.m.jd.com/coupons/show.action) 的券列表与领取接口
+  //      (appid=h5_awake_wxapp, client=wh5, 主 bundle 逆向确认)
+  //   3) whx_followShop: 关注店铺领券前置动作
+  if (fid && /^(readCustomSurfaceList|mcoupon_\w+|whx_followShop)$/i.test(fid)) {
+    return pass();
+  }
+
+  const TITLE_RE =
+    /为你推荐|潮流好货|推荐榜单|快点来看看|你可能还喜欢|猜你喜欢|AI推荐|好物推荐|热门推荐|精选推荐|看了又看|相似好物/;
+
+  const BLOCK_MID = new Set([
+    "recommendfloor",
+    "recommendFloor",
+    "recommend_floor",
+    "recommend",
+    "feeds",
+    "feedFloor",
+    "rankFloor",
+    "rankListFloor",
+    "ranklist",
+    "lookFloor",
+    "lookAround",
+    "buyOften",
+    "fashionGoods",
+    "goodStuffFloor",
+    "mayLikeFloor",
+    "guessYouLike",
+    "bigSaleFloor",
+    "newAttentionCard",
+    "newBigSaleFloor",
+    "newStyleAttentionCard",
+    "newsFloor",
+    "noticeFloor",
+    "bannerFloor",
+    "bpDynamicFloor",
+    "plusFloor",
+    "banner",
+    "jdDeliveryBanner",
+    "cartRecommend",
+    "cartRecommendFloor",
+    "recommendRank",
+    "rankRecommend",
+    "feedRecommend",
+  ]);
+
+  // 预检信号 = deepScrub/scrubSplashFields 可能产生修改的全部必要特征（黑名单 mId
+  // 字面量 + mId 正则 token + 推荐标题 + 开屏特征字段）。原始文本不含任一信号时
+  // 清理必然是空操作，直接放行。注：容器 key（floors/floorList 等）无需列入——
+  // 容器存在而无楼层命中时本就是空操作；showtimes 单词不列入（影院排片等业务
+  // 同名，用 showtimesdaily/start_isshow 等高置信 token 避免误判）。
+  const SCRUB_SIGNAL_RE =
+    /recommend|jdur|guess|rank|look|fashion|feed|maylike|goodstuff|cartrec|banner|buyoften|bigsale|attention|newsfloor|noticefloor|plusfloor|bpdynamic|showtimesdaily|startadimage|start_isshow|startisshow|showcondition|verctr|saoasao|ver14close|launchvideos|tnstart|startcardimage|tnnode|为你推荐|潮流好货|推荐榜单|快点来看看|你可能还喜欢|猜你喜欢|AI推荐|好物推荐|热门推荐|精选推荐|看了又看|相似好物/i;
+
+  // 开屏专用信号(高置信 token): 响应含任一 token 时无论是否清理命中都输出
+  // [JD-FID] splash-signal 观测行——漏网排查时区分三种情况:
+  //   a) "splash-signal cleaned hits=N"  脚本生效且清理命中(仍漏网则另有原因)
+  //   b) "splash-signal seen but 0 cleaned"  脚本生效但字段名不匹配(需要 HAR)
+  //   c) 无此行仍漏网  脚本未生效(远程脚本缓存未刷新,需重启 Loon)或 schema 完全不同
+  const SPLASH_SIGNAL_TEXT_RE =
+    /showtimesdaily|startadimage|start_isshow|startisshow|showcondition|verctr|saoasao|ver14close|launchvideos|tnstart|startcardimage|tnnode/i;
+
+  // 专项 fid：分支内的处理不依赖特征预检（start 清字段、cart 清列表等），必须解析
+  const SPECIAL_FID_RE = /^(deliverLayer|orderTrackBusiness|getTabHomeInfo|myOrderInfo|personinfoBusiness|start|welcomeHome)$/i;
+
+  const CART_FID_RE = /cart|Cart|shopCart|synCart/i;
+
+  // 非 JSON（可能加密）响应的推荐兜底判定（与原版一致）
+  const RECOMMENDISH_RE = /recommend|personinfo|cart|myOrder|orderTrack|deliverLayer/i;
+
+  const specialFid = SPECIAL_FID_RE.test(fid) || CART_FID_RE.test(fid);
+
+  function emptyRecommendPayload() {
+    return JSON.stringify({
+      code: "0",
+      echo: "0",
+      hasNextPage: false,
+      hasMore: false,
+      wareInfoList: [],
+      list: [],
+      data: { wareInfoList: [], list: [], hasNextPage: false, hasMore: false, feeds: [] },
+      result: { wareInfoList: [], list: [], hasNextPage: false, hasMore: false },
+    });
+  }
+
+  // uniformRecommend：直接空包（购物车/消息/物流底部流）
+  if (/^uniformRecommend/i.test(fid) || /functionId=uniformRecommend/i.test(url + reqBody)) {
+    logHit("uniformRecommend -> 空包");
+    return { body: emptyRecommendPayload() };
+  }
+
+  // 快速预检：非专项 fid、非推荐兜底类、响应无任何可清理特征 → 原样放行（零解析开销）
+  if (!specialFid && !RECOMMENDISH_RE.test(fid + url + reqBody) && !SCRUB_SIGNAL_RE.test(rawStr)) {
+    return pass();
+  }
+
+  let obj;
+  try {
+    obj = JSON.parse(rawStr);
+  } catch (e) {
+    // 非 JSON（可能加密）：若请求是推荐相关，仍尝试空包
+    if (RECOMMENDISH_RE.test(fid + url + reqBody)) {
+      logHit("非JSON推荐接口 -> 空包");
+      return { body: emptyRecommendPayload() };
+    }
+    return pass();
+  }
+
+  let dirty = 0; // 清理命中计数（仅用于 [JD-FID] 命中日志）
+
+  function floorText(f) {
+    if (!f || typeof f !== "object") return "";
+    return [f.title, f.name, f.floorName, f.floorTitle, f.showTitle, f.tabName, f.subTitle, f.mainTitle, f.text]
+      .filter(Boolean)
+      .join("|");
+  }
+
+  function isRecFloor(f) {
+    if (!f || typeof f !== "object") return false;
+    const id = String(f.mId || f.mid || f.type || f.floorId || f.templateId || f.bId || "");
+    if (BLOCK_MID.has(id) || /recommend|jdur|guess|rank|look|fashion|feed|maylike|goodstuff|cartRec/i.test(id))
+      return true;
+    if (TITLE_RE.test(floorText(f))) return true;
+    // 任意字段字符串命中标题（原生 stringify，实测快于 JS 层遍历）
+    try {
+      const s = JSON.stringify(f);
+      if (TITLE_RE.test(s) && s.length < 8000) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function emptyRecommend(o) {
+    if (!o || typeof o !== "object") return 0;
+    let changed = 0;
+    [
+      "wareInfoList",
+      "wareList",
+      "list",
+      "feeds",
+      "feedList",
+      "rankList",
+      "recommendList",
+      "itemList",
+      "skuList",
+      "productList",
+      "dataList",
+      "contentList",
+      "cardList",
+    ].forEach((k) => {
+      if (Array.isArray(o[k])) {
+        if (o[k].length > 0) {
+          o[k] = [];
+          changed++;
+        } else {
+          o[k] = [];
+        }
+      }
+    });
+    if (o.hasNextPage != null && o.hasNextPage !== false) {
+      o.hasNextPage = false;
+      changed++;
+    }
+    if (o.hasMore != null && o.hasMore !== false) {
+      o.hasMore = false;
+      changed++;
+    }
+    return changed;
+  }
+
+  function scrubFloors(floors) {
+    if (!Array.isArray(floors)) return floors;
+    const before = floors.length;
+    const kept = floors.filter((f) => !isRecFloor(f));
+    dirty += before - kept.length;
+    return kept;
+  }
+
+  function deepScrub(node, depth) {
+    if (!node || typeof node !== "object" || depth > 10) return;
+    if (Array.isArray(node)) {
+      for (let i = node.length - 1; i >= 0; i--) {
+        const item = node[i];
+        if (isRecFloor(item)) {
+          node.splice(i, 1);
+          dirty++;
+        } else {
+          deepScrub(item, depth + 1);
+        }
+      }
+      return;
+    }
+    for (const k of Object.keys(node)) {
+      const v = node[k];
+      if ((k === "floors" || k === "floorList" || k === "webViewFloorList" || k === "floorInfoList") && Array.isArray(v)) {
+        node[k] = scrubFloors(v);
+        deepScrub(node[k], depth + 1);
+        continue;
+      }
+      if (typeof v === "string" && TITLE_RE.test(v)) {
+        emptyRecommend(node);
+        // 标题所在对象尽量标记删除由上层 floors 过滤；这里清空列表
+      }
+      deepScrub(v, depth + 1);
+    }
+  }
+
+  // 可莉同款专项
+  if (fid === "deliverLayer" || fid === "orderTrackBusiness") {
+    if (obj?.bannerInfo) {
+      delete obj.bannerInfo;
+      dirty++;
+    }
+    if (obj?.floors?.length) obj.floors = scrubFloors(obj.floors);
+    dirty += emptyRecommend(obj);
+  } else if (fid === "getTabHomeInfo") {
+    if (obj?.result?.iconInfo) {
+      delete obj.result.iconInfo;
+      dirty++;
+    }
+    if (obj?.result?.roofTop) {
+      delete obj.result.roofTop;
+      dirty++;
+    }
+  } else if (fid === "myOrderInfo") {
+    if (obj?.floors?.length) {
+      const before = obj.floors.length;
+      obj.floors = obj.floors.filter(
+        (floor) => !["bannerFloor", "bpDynamicFloor", "plusFloor"].includes(floor?.mId) && !isRecFloor(floor)
+      );
+      dirty += before - obj.floors.length;
+    }
+  } else if (fid === "personinfoBusiness") {
+    const scrub = (floors) => {
+      if (!floors?.length) return floors;
+      const before = floors.length;
+      const kept = floors.filter((floor) => {
+        if (BLOCK_MID.has(floor?.mId) || isRecFloor(floor)) return false;
+        if (floor?.mId === "basefloorinfo" && floor.data) {
+          if (floor.data.commonPopup) {
+            delete floor.data.commonPopup;
+            dirty++;
+          }
+          if (floor.data.commonPopup_dynamic) {
+            delete floor.data.commonPopup_dynamic;
+            dirty++;
+          }
+          if (floor.data.floatLayer) {
+            delete floor.data.floatLayer;
+            dirty++;
+          }
+          if (Array.isArray(floor.data.commonTips) && floor.data.commonTips.length) {
+            floor.data.commonTips = [];
+            dirty++;
+          }
+          if (Array.isArray(floor.data.commonWindows) && floor.data.commonWindows.length) {
+            floor.data.commonWindows = [];
+            dirty++;
+          }
+        }
+        return true;
+      });
+      dirty += before - kept.length;
+      return kept;
+    };
+    if (obj?.floors) obj.floors = scrub(obj.floors);
+    if (obj?.others?.floors) obj.others.floors = scrub(obj.others.floors);
+  } else if (fid === "start") {
+    const hadAds =
+      (Array.isArray(obj?.images) && obj.images.length > 0) || !!obj?.startADImage;
+    if (obj?.images?.length) {
+      obj.images = [];
+      dirty++;
+    }
+    if (obj?.showTimesDaily) {
+      obj.showTimesDaily = 0;
+      dirty++;
+    }
+    // IPA(16.1.80)逆向补充：开屏广告单图字段
+    if ("startADImage" in obj) {
+      delete obj.startADImage;
+      dirty++;
+    }
+    // 频控/展示门槛全面压制(字段清单来自 16.1.80 IPA strings):
+    // 每日额度、展示标志、展示条件、CTR开关、视频开屏
+    const ZERO_KEYS = [
+      "showtimes", "showTimes", "start_isshow", "startIsshow",
+      "showcondition", "verCtrSwitch", "verCtrAllSwitch", "saoasaoSwitch",
+    ];
+    for (const k of ZERO_KEYS) {
+      if (k in obj) {
+        if (obj[k] !== 0) dirty++;
+        obj[k] = 0;
+      }
+    }
+    if ("ver14CloseSwitch" in obj) obj.ver14CloseSwitch = 1;
+    if (Array.isArray(obj.launchVideos) && obj.launchVideos.length) {
+      obj.launchVideos = [];
+      dirty++;
+    }
+    if (Array.isArray(obj.LaunchVideos) && obj.LaunchVideos.length) {
+      obj.LaunchVideos = [];
+      dirty++;
+    }
+    if (hadAds) {
+      dirty++; // 人证信号: 开屏素材被下发且已被清理
+      try {
+        ctx.notify({ title: "JD去广告", body: "开屏素材已拦截清理" });
+      } catch (e) {}
+    }
+  } else if (fid === "welcomeHome") {
+    if (obj?.floorList?.length) {
+      const before = obj.floorList.length;
+      const delItems = ["bottomXview", "float", "photoCeiling", "recommend", "ruleFloat", "searchIcon", "topRotate", "tabBarAtmosphere"];
+      obj.floorList = obj.floorList.filter((i) => !delItems.includes(i?.type) && !isRecFloor(i));
+      dirty += before - obj.floorList.length;
+    }
+    if (obj?.webViewFloorList?.length) {
+      obj.webViewFloorList = [];
+      dirty++;
+    }
+  } else if (CART_FID_RE.test(fid)) {
+    // 购物车主接口：清推荐楼层
+    deepScrub(obj, 0);
+    dirty += emptyRecommend(obj);
+    if (obj.data) dirty += emptyRecommend(obj.data);
+    if (obj.result) dirty += emptyRecommend(obj.result);
+  }
+
+  // 开屏特征字段（与 start 分支/ZERO_KEYS 同源，16.1.80 IPA strings）
+  // 高置信门控 key：节点含其一才按开屏节点处理（避免误伤普通业务字段）
+  // 2026-11-02 IPA 二次挖掘补充: 京东开屏实际走 JDMPLaunchCacheDataIO 本地缓存
+  // + 后台预拉取(前台启动纯本地决策), 模型含天幕(TN)体系字段 TNStart/tnNode/tnUrl/
+  // tnId/tnMd5 与 startCardImage/toShow/isNewCarousel(素材尺寸 s1125x2436, 素材预取
+  // sche=Image_JDAppHome), 均为旧清理清单的漏网通道
+  const SPLASH_GATE_RE =
+    /^(showTimesDaily|startADImage|start_isshow|startIsshow|showcondition|verCtrSwitch|verCtrAllSwitch|saoasaoSwitch|ver14CloseSwitch|launchVideos|LaunchVideos|TNStart|startCardImage|tnNode)$/;
+
+  // 门控命中后需归零的 key（含无 "Daily" 后缀的变体 + TN 轮播开关）
+  const SPLASH_ZERO_RE =
+    /^(showTimesDaily|showtimes|showTimes|start_isshow|startIsshow|showcondition|verCtrSwitch|verCtrAllSwitch|saoasaoSwitch|TNStart|isNewCarousel)$/;
+
+  // 门控命中后直接删除的 key（素材/节点/上报类, 只可能存在于开屏模型内）
+  const SPLASH_DELETE_RE = /^(startADImage|startCardImage|tnUrl|tnId|tnMd5|tnNode|logoImg|exposalUrl|expoJson)$/;
+
+  // fid 无关的开屏字段清理：递归遍历（含嵌套 JSON 字符串），凡节点命中门控 key
+  // 即按 start 分支同语义处理（频控/开关归零、素材/节点删除、launchVideos 清空、
+  // 兄弟 images 数组清空、ver14CloseSwitch=1）。fid 不可见（加密 body/根路径通道）
+  // 或字段嵌套在 data 等子层时由此兜底。
+  function scrubSplashFields(node) {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      node.forEach(scrubSplashFields);
+      return;
+    }
+    for (const k of Object.keys(node)) {
+      const v = node[k];
+      if (typeof v === "string" && v.length > 1 && (v.charAt(0) === "{" || v.charAt(0) === "[")) {
+        try {
+          const parsed = JSON.parse(v);
+          if (parsed !== null && typeof parsed === "object") {
+            const before = JSON.stringify(parsed);
+            scrubSplashFields(parsed);
+            const after = JSON.stringify(parsed);
+            if (after !== before) node[k] = after;
+          }
+        } catch (e) {}
+      } else {
+        scrubSplashFields(v);
+      }
+    }
+    const keys = Object.keys(node);
+    if (!keys.some((k) => SPLASH_GATE_RE.test(k))) return;
+    for (const k of keys) {
+      if (SPLASH_ZERO_RE.test(k)) {
+        if (node[k] !== 0) {
+          node[k] = 0;
+          dirty++;
+        }
+      } else if (k === "toShow") {
+        // 类型保真的置假(布尔/数字/字符串三种形态都可能出现)
+        const v = node[k];
+        if (v === true) {
+          node[k] = false;
+          dirty++;
+        } else if (typeof v === "number" && v > 0) {
+          node[k] = 0;
+          dirty++;
+        } else if (v === "true" || v === "1") {
+          node[k] = "false";
+          dirty++;
+        }
+      } else if (k === "ver14CloseSwitch") {
+        if (node[k] !== 1) {
+          node[k] = 1;
+          dirty++;
+        }
+      } else if (k === "launchVideos" || k === "LaunchVideos") {
+        if (Array.isArray(node[k]) && node[k].length) {
+          node[k] = [];
+          dirty++;
+        }
+      } else if (SPLASH_DELETE_RE.test(k)) {
+        if (node[k] !== undefined) {
+          delete node[k];
+          dirty++;
+        }
+      }
+    }
+    if (Array.isArray(node.images) && node.images.length) {
+      node.images = [];
+      dirty++;
+    }
+    if (node.startADImage) {
+      delete node.startADImage;
+      dirty++;
+    }
+  }
+
+  // 全局：按标题/mId 递归清
+  deepScrub(obj, 0);
+
+  // 全局：开屏特征字段 fid 无关清理（加密 body/根路径通道下 fid 不可见的兜底）
+  scrubSplashFields(obj);
+
+  if (SPLASH_SIGNAL_TEXT_RE.test(rawStr)) {
+    logHit(dirty > 0 ? "splash-signal cleaned hits=" + dirty : "splash-signal seen but 0 cleaned (schema mismatch?)");
+  } else if (dirty > 0) {
+    logHit("cleaned hits=" + dirty);
+  }
+  return { body: JSON.stringify(obj) };
+}
