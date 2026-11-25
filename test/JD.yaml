@@ -1,0 +1,119 @@
+name: 京东 去广告
+author: aoconch, y0unge
+description: y0unge/ad-block-collection 京东模块的 Egern 转换（基于京东 16.1.80 逆向+抓包）：请求脚本读 POST body 的 functionId 拦纯广告接口，响应脚本按 fid 清理并对开屏字段做 fid 无关兜底清理；QUIC 网关与推送域名拦截迫使开屏配置走可拦截通道；开屏素材文件断供。存量开屏本地缓存需在京东内清缓存或卸载重装清一次，之后新写入的配置会被脚本清空。
+homepage: https://github.com/y0unge/ad-block-collection
+icon: https://raw.githubusercontent.com/luestr/IconResource/main/App_icon/120px/JD.png
+
+rules:
+  - and:
+      match:
+        - domain:
+            match: quic-api.m.jd.com
+        - protocol:
+            match: quic
+      policy: REJECT
+  - and:
+      match:
+        - domain:
+            match: quic-api.m.jd.com
+        - protocol:
+            match: udp
+      policy: REJECT
+  - domain:
+      match: mars.jd.com
+      policy: REJECT
+  - domain:
+      match: perf.m.jd.com
+      policy: REJECT
+  - domain:
+      match: h5speed.m.jd.com
+      policy: REJECT
+  - domain:
+      match: sh.jd.com
+      policy: REJECT
+  - domain:
+      match: anti-sdk-report.m.jd.com
+      policy: REJECT
+  - domain:
+      match: uranus.jd.com
+      policy: REJECT
+  - domain:
+      match: mllog.jd.com
+      policy: REJECT
+  - domain:
+      match: ex.m.jd.com
+      policy: REJECT
+  - domain:
+      match: cltm.jd.com
+      policy: REJECT
+  - domain:
+      match: ccflbs.m.jd.com
+      policy: REJECT
+  - domain:
+      match: dsap.jd.com
+      policy: REJECT
+  - domain:
+      match: jra.jd.com
+      policy: REJECT
+  - domain:
+      match: sdkfp.jd.com
+      policy: REJECT
+  - domain:
+      match: device-security-url.jd.com
+      policy: REJECT
+  - domain:
+      match: policy.jd.com
+      policy: REJECT
+  - domain:
+      match: im-x.jd.com
+      policy: REJECT
+  - domain:
+      match: jpushsc.m.jd.com
+      policy: REJECT
+  - domain:
+      match: jpushjd.m.jd.com
+      policy: REJECT
+  - domain:
+      match: cloudpush.jd.com
+      policy: REJECT
+
+url_rewrites:
+  - match: '^https?://[a-z0-9]+\.360buyimg\.com/mobilecms/s1\d{3}x2\d{3}_jfs/'
+    location: http://reject/
+  - match: '^https?://[a-z0-9]+\.?360buyimg\.com/material-video/'
+    location: http://reject/
+  - match: '^https://api\.m\.jd\.com/client\.action\?functionId=uniformRecommend\d*'
+    location: http://reject-dict/
+  - match: '^https://storage\.jd\.com/mpaas2-public/product/[^/]+/recommend_jdur'
+    location: http://reject-dict/
+  - match: '^https?://api\.m\.jd\.com/client\.action\?functionId=queryPagePopWindow'
+    location: http://reject/
+  - match: '^https?://api\.m\.jd\.com/client\.action\?functionId=babelGetGuideTips'
+    location: http://reject/
+  - match: '^https?://api\.m\.jd\.com/client\.action\?functionId=secondFloor'
+    location: http://reject/
+
+scriptings:
+  - http_request:
+      name: 京东_广告请求拦截
+      match: '(?i)^https?://((api|api-q|squnit-api|quic-api)\.m\.jd\.com|(squnit-api-)?api-ai\.jd\.com)/(client\.action|api)?([/?#]|$)'
+      script_url: 'https://raw.githubusercontent.com/y0unge/ad-block-collection/main/jd_ad_request.js'
+      body_required: true
+      timeout: 20
+  - http_response:
+      name: 京东_广告响应清理
+      match: '(?i)^https?://((api|api-q|squnit-api|quic-api)\.m\.jd\.com|(squnit-api-)?api-ai\.jd\.com)/(client\.action|api)?([/?#]|$)'
+      script_url: 'https://raw.githubusercontent.com/y0unge/ad-block-collection/main/JD_remove_ads.js'
+      body_required: true
+      timeout: 20
+
+mitm:
+  hostnames:
+    - api.m.jd.com
+    - api-q.m.jd.com
+    - squnit-api.m.jd.com
+    - quic-api.m.jd.com
+    - api-ai.jd.com
+    - squnit-api-ai.jd.com
+    - storage.jd.com
+    - "*.360buyimg.com"
