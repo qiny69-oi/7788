@@ -1,67 +1,87 @@
 name: 淘宝
 description: 过滤淘宝广告
 icon: https://raw.githubusercontent.com/qiny69-oi/7788/refs/heads/main/icon/taobao.png
+# merged from: Thelongdarkorg/loon-plugins taobao_splash_ad_block.plugin
+# UA 串 %E6%B7%98%E5%AE%9D* 即「淘宝」的 URL 编码，原样保留，只拦淘宝 UA 的 amdc 下发，避免误伤其他 App 的同名路径。
+# 与闲鱼模块里 acs.m.goofish.com 上的同名接口是不同主机，两模块同开不冲突、也不重复。
+
 dns: {}
 rules:
-- and:
-    match:
-    - url_regex:
-        match: ^http://.+/amdc/mobileDispatch
-    - user_agent:
-        match: '%E6%B7%98%E5%AE%9D*'
-    policy: REJECT
-- domain:
-    match: adashx.m.taobao.com
-    policy: REJECT
-- domain:
-    match: ossgw.alicdn.com
-    policy: REJECT
-- domain:
-    match: ems.youku.com
-    policy: REJECT
-- domain:
-    match: hudong.alicdn.com
-    policy: REJECT
-- domain:
-    match: h-adashx.ut.taobao.com
-    policy: REJECT
-- domain:
-    match: ut.taobao.com
-    policy: REJECT
-rewrites:
-- match: (?i)^https://heic\.alicdn\.com/imgextra/i\d/[A-Za-z0-9_!]+-\d+-tps-\d+-\d+\.png_\d+x\d*q\d+\.jpg_\.heic$
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: (?i)^https://heic\.alicdn\.com/imgextra/i\d/[A-Za-z0-9_!]+-\d+-tps-\d+-\d+\.jpg_\d+x\d*q\d+\.jpg_\.heic$
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: (?i)^https://heic\.alicdn\.com/imgextra/i\d/\d*/?[\w!]+-\d-(?:octopus|tps)-(?:1080|1125)-\d{4}\.(?:jpg|png)_(?:1\d{3}|9\d{2})x(?:\d|1\d{3}|9\d{2})q[59]0
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
-- match: (?i)^https?://gw\.alicdn\.com/imgextra/i\d+/[^/]+_!!\d+-\d+-tps-(720-1280|1080-1920|1125-1602|1242-2208)\.(jpg|png|jpeg)_[^/]+\.webp
-  actions:
-  - respond:
-      status: 200
-      headers:
-        Content-Type: application/json
-      body: '{}'
+  # 移除广告下发请求（限定淘宝 UA）
+  - and:
+      match:
+        - url_regex:
+            match: '^http://.+/amdc/mobileDispatch'
+        - user_agent:
+            match: '%E6%B7%98%E5%AE%9D*'
+      policy: REJECT
+
+  # 广告 / 埋点 / 统计域名，域名级 REJECT（免 MITM 即生效）
+  - domain:
+      match: adashx.m.taobao.com
+      policy: REJECT
+  - domain:
+      match: ossgw.alicdn.com
+      policy: REJECT
+  - domain:
+      match: ems.youku.com
+      policy: REJECT
+  - domain:
+      match: hudong.alicdn.com
+      policy: REJECT
+  - domain:
+      match: h-adashx.ut.taobao.com
+      policy: REJECT
+  - domain:
+      match: ut.taobao.com
+      policy: REJECT
+
+url_rewrites:
+  # ---------- 广告 / 开屏接口（返回空字典，App 自动跳过广告位） ----------
+  # 阿里广告服务：开屏与信息流广告下发
+  - match: '^https://acs\.m\.taobao\.com/gw/mtop\.alibaba\.advertisementservice\.getadv'
+    location: http://reject-dict/
+  # 一淘广告配置
+  - match: '^https://acs\.m\.taobao\.com/gw/mtop\.alimama\.etao\.config\.query/.+?etao_advertise'
+    location: http://reject-dict/
+  # 淘宝开屏广告
+  - match: '^https://acs\.m\.taobao\.com/gw/mtop\.etao\.noah\.query/.+tao_splash'
+    location: http://reject-dict/
+  # O2O 广告网关
+  - match: '^https://acs\.m\.taobao\.com/gw/mtop\.o2o\.ad\.gateway\.get'
+    location: http://reject-dict/
+  # 闲鱼 / 二手 首页欢迎广告
+  - match: '^https://acs\.m\.taobao\.com/gw/mtop\.taobao\.idle\.home\.welcome'
+    location: http://reject-dict/
+  # 闲鱼 / 二手 开屏广告
+  - match: '^https://acs\.m\.taobao\.com/gw/mtop\.taobao\.idlecommerce\.splash\.ads'
+    location: http://reject-dict/
+  # 启动初始化中的广告位
+  - match: '^https://acs\.m\.taobao\.com/gw/mtop\.alimusic\.common\.mobileservice\.startinit'
+    location: http://reject-dict/
+  # 淘票票 / 电影广告接口
+  - match: '^https://acs\.m\.taobao\.com/gw/mtop\.film\.mtopadvertiseapi\.queryadvertise'
+    location: http://reject-dict/
+  # 菜鸟广告位
+  - match: '^https://guide-acs\.m\.taobao\.com/gw/mtop\.cainiao\.adx\.flyad\.getad'
+    location: http://reject-dict/
+  # 首页开屏广告位
+  - match: '^https://guide-acs\.m\.taobao\.com/gw/mtop\.taobao\.wireless\.home\.splash\.awesome\.get'
+    location: http://reject-dict/
+
+  # ---------- 广告图直链（heic / webp 形式的开屏与弹窗大图，上游原样 reject-dict） ----------
+  - match: '^https://heic\.alicdn\.com/imgextra/i\d/[A-Za-z0-9_!]+-\d+-tps-\d+-\d+\.png_\d+x\d+q\d+\.jpg_\.heic$'
+    location: http://reject-dict/
+  - match: '^https://heic\.alicdn\.com/imgextra/i\d/[A-Za-z0-9_!]+-\d+-tps-\d+-\d+\.jpg_\d+x\d+q\d+\.jpg_\.heic$'
+    location: http://reject-dict/
+  - match: '^https://heic\.alicdn\.com/imgextra/i\d/\d*/?[\w!]+-\d-(?:octopus|tps)-(?:1080|1125)-\d{4}\.(?:jpg|png)_(?:1\d{3}|9\d{2})x(?:\d|1\d{3}|9\d{2})q[59]0'
+    location: http://reject-dict/
+  - match: '^https?://gw\.alicdn\.com/imgextra/i\d+/[^/]+_!!\d+-\d+-tps-(720-1280|1080-1920|1125-1602|1242-2208)\.(jpg|png|jpeg)_[^/]+\.webp'
+    location: http://reject-dict/
+
 mitm:
   hostnames:
-    includes:
     - acs.m.taobao.com
+    - guide-acs.m.taobao.com
     - heic.alicdn.com
     - gw.alicdn.com
-    - guide-acs.m.taobao.com
-    - poplayer.template.alibaba.com
