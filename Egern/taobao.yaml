@@ -39,6 +39,8 @@ rules:
 url_rewrites:
   # ---------- 广告 / 开屏接口（返回空字典，App 自动跳过广告位） ----------
   # 阿里广告服务：开屏与信息流广告下发
+  - match: '^https://acs\.m\.taobao\.com/gw/mtop\.taobao\.shot\.resources\.load/'
+    location: http://reject-dict/
   - match: '^https://acs\.m\.taobao\.com/gw/mtop\.alibaba\.advertisementservice\.getadv'
     location: http://reject-dict/
   # 一淘广告配置
